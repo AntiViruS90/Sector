@@ -19,27 +19,70 @@ const userInput = document.getElementById('user-input');
 const submitBtn = document.getElementById('submit-btn');
 const displayWeather = document.getElementById('display-weather');
 
-const searchWeather = async (city) => {
+// const searchWeather = async (city) => {
 
-    const res = await fetch(`https://api.weatherstack.com/current?access_key=${API_KEY}&query=${userInput.value}`);
+//     const res = await fetch(`https://api.weatherstack.com/current?access_key=${API_KEY}&query=${userInput.value}`);
+//     const data = await res.json();
+
+//     if (data.error) {
+//         displayWeather.innerHTML = `
+//             <h3>Город не найден. Попробуйте снова.</h3>
+//         `;
+//         return;
+//     }
+
+//     try {
+//         const res = await fetch(`https://api.weatherstack.com/current?access_key=${API_KEY}&query=${city}`);
+//         const data = await res.json();
+
+//         if (data.code === "404") {
+//             displayWeather.innerHTML = `
+//                 <h3>Город не найден. Попробуйте снова.</h3>
+//             `;
+//         }
+//         const weatherDescription = data.current.weather_descriptions[0];
+//         const weatherDescriptionUpper = weatherDescription.toUpperCase();
+        
+//         displayWeather.innerHTML = `
+//             <h2>${data.location.name}</h2>
+//             <span class="d-flex justify-content-center">
+//                 <img src="${data.current.weather_icons[0]}" alt="weather icon">
+//                 <h3>${Math.round(data.current.temperature)}°C</h3>
+//             </span>
+            
+//             <h4>${weatherDescriptionUpper}</h4>
+//         `;
+
+//     }
+//     catch(error) {
+//         displayWeather.innerHTML = `
+//             <h3>Ошибка при получении данных. Проверьте интернет-соединение или позже попробуйте снова.</h3>
+//         `;
+//         console.error(error);
+//     }
+// };
+
+
+const searchWeather = async (city = defaultCity, lat = null, lon = null) => {
+    let query = `q=${city}`;
+
+    if (lat && lon) {
+        query = `lat=${lat}&lon=${lon}`;
+    }
+    console.log(lat);
+    console.log(lon);
+
+    const res = await fetch(`https://api.weatherstack.com/current?access_key=${API_KEY}&query=${query}`);
     const data = await res.json();
+
+    console.log(data);
 
     if (data.error) {
         displayWeather.innerHTML = `
             <h3>Город не найден. Попробуйте снова.</h3>
         `;
         return;
-    }
-
-    try {
-        const res = await fetch(`https://api.weatherstack.com/current?access_key=${API_KEY}&query=${city}`);
-        const data = await res.json();
-
-        if (data.code === "404") {
-            displayWeather.innerHTML = `
-                <h3>Город не найден. Попробуйте снова.</h3>
-            `;
-        }
+    } else {
         const weatherDescription = data.current.weather_descriptions[0];
         const weatherDescriptionUpper = weatherDescription.toUpperCase();
         
@@ -52,33 +95,22 @@ const searchWeather = async (city) => {
             
             <h4>${weatherDescriptionUpper}</h4>
         `;
+    }
 
-    }
-    catch(error) {
-        displayWeather.innerHTML = `
-            <h3>Ошибка при получении данных. Проверьте интернет-соединение или позже попробуйте снова.</h3>
-        `;
-        console.error(error);
-    }
 };
 
 const getWeatherByGeolocation = () => {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(async (position) => {
             const { latitude, longitude } = position.coords;
-
-            try {
-                const res = await fetch(`https://api.weatherstack.com/current?access_key=${API_KEY}&query=${latitude},${longitude}`);
-                const data = await res.json();
-
-                searchWeather(data.location.name);
-                localStorage.setItem('city', data.location.name);
-            } catch (error) {
-                console.error("Ошибка при получении погоды по местоположению: ", error);
-            }
-        }, () => {
+            searchWeather(null, latitude, longitude)
+            
+        }, 
+        () => {
             searchWeather(defaultCity);
-        });
+        }
+        
+    );
     } else {
         searchWeather(defaultCity)
     }
