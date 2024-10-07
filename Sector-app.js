@@ -4,7 +4,7 @@ function updateTime() {
     const now = new Date()
     const timeString = now.toLocaleTimeString('ru-Ru');
     const dateString = now.toLocaleDateString('ru-Ru', {
-        day: 'numeric', month: 'long', weekday: 'long',
+        weekday: 'long', day: 'numeric', month: 'long',
     });
 
     document.getElementById('time').textContent = timeString;
@@ -13,17 +13,26 @@ function updateTime() {
 setInterval(updateTime, 1000)
 
 // Для блока погоды
-// API OpenWeather b4132d26749b6b9167f50c7dab2c04fd
-const URL = "https://api.openweathermap.org/data/2.5";
-const API_KEY = '784b6aa8319e639080f53150b0d20e4d';
+const API_KEY = 'd873d1e39c8e2d597fe431b3ab9aadea';
 const defaultCity = 'Краснодар';
 const userInput = document.getElementById('user-input');
 const submitBtn = document.getElementById('submit-btn');
 const displayWeather = document.getElementById('display-weather');
 
 const searchWeather = async (city) => {
+
+    const res = await fetch(`https://api.weatherstack.com/current?access_key=${API_KEY}&query=${userInput.value}`);
+    const data = await res.json();
+
+    if (data.error) {
+        displayWeather.innerHTML = `
+            <h3>Город не найден. Попробуйте снова.</h3>
+        `;
+        return;
+    }
+
     try {
-        const res = await fetch(`https:api.openweathermap.org/data/2.5/weather?q=${userInput.value}&appid=${API_KEY}&units=metric&lang=ru`);
+        const res = await fetch(`https://api.weatherstack.com/current?access_key=${API_KEY}&query=${city}`);
         const data = await res.json();
 
         if (data.code === "404") {
@@ -31,15 +40,19 @@ const searchWeather = async (city) => {
                 <h3>Город не найден. Попробуйте снова.</h3>
             `;
         }
-
-        const weatherDescription = data.weather[0].description;
+        const weatherDescription = data.current.weather_descriptions[0];
         const weatherDescriptionUpper = weatherDescription.toUpperCase();
         
         displayWeather.innerHTML = `
-            <h2>${data.name}</h2>
-            <h3>${Math.round(data.main.temp)}°C</h3>
+            <h2>${data.location.name}</h2>
+            <span class="d-flex justify-content-center">
+                <img src="${data.current.weather_icons[0]}" alt="weather icon">
+                <h3>${Math.round(data.current.temperature)}°C</h3>
+            </span>
+            
             <h4>${weatherDescriptionUpper}</h4>
         `;
+
     }
     catch(error) {
         displayWeather.innerHTML = `
@@ -47,11 +60,37 @@ const searchWeather = async (city) => {
         `;
         console.error(error);
     }
-    
+};
+
+const getWeatherByGeolocation = () => {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const { latitude, longitude } = position.coords;
+
+            try {
+                const res = await fetch(`https://api.weatherstack.com/current?access_key=${API_KEY}&query=${latitude},${longitude}`);
+                const data = await res.json();
+
+                searchWeather(data.location.name);
+                localStorage.setItem('city', data.location.name);
+            } catch (error) {
+                console.error("Ошибка при получении погоды по местоположению: ", error);
+            }
+        }, () => {
+            searchWeather(defaultCity);
+        });
+    } else {
+        searchWeather(defaultCity)
+    }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    searchWeather(defaultCity);
+    const savedCity = localStorage.getItem('city');
+    if (savedCity) {
+        searchWeather(savedCity);
+    } else {
+        getWeatherByGeolocation();
+    }
 });
 
 submitBtn.addEventListener('click', () => {
@@ -59,11 +98,14 @@ submitBtn.addEventListener('click', () => {
 
     if (city) {
         searchWeather(city);
+        localStorage.setItem('city', city);
     } else {
         displayWeather.innerHTML = `
             <h3>Пожалуйста, введите название города.</h3>
         `;
     }
+
+    userInput = '';
 });
 
 userInput.addEventListener('keydown', (e) => {
@@ -72,21 +114,16 @@ userInput.addEventListener('keydown', (e) => {
 
         if (city) {
             searchWeather(city);
+            localStorage.setItem('city', city);
         } else {
             displayWeather.innerHTML = `
                 <h3>Пожалуйста, введите название города.</h3>
             `;
         }
     }
-})
+    userInput = '';
+});
 
-
-// submitBtn.addEventListener('click', searchWeather);
-// userInput.addEventListener('keydown', (e) => {
-//     if (e.key === "Enter") {
-//         searchWeather();
-//     }
-// });
 
 
 // Для смены фоновых изображений

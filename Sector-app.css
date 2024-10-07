@@ -52,3 +52,16 @@ li {
     flex-wrap: wrap;
     align-content: center;
 }
+
+.tasks-h1,
+#display-weather > * {
+    text-shadow: 0 0 4px black;
+}
+
+img {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    margin-top: 7.5px;
+    margin-right: 10px;
+}
