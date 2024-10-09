@@ -13,7 +13,7 @@ body {
 .time,
 .tasks {
     margin: 20px 0;
-    color: black;
+    /* color: black; */
 }
 
 #task-input {

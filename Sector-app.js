@@ -12,150 +12,116 @@ function updateTime() {
 }
 setInterval(updateTime, 1000)
 
-// Для блока погоды
-const API_KEY = 'd873d1e39c8e2d597fe431b3ab9aadea';
+
+// Функция для отображения погоды
+
+const URL = `https://api.openweathermap.org/data/2.5/`
+const API_KEY = '784b6aa8319e639080f53150b0d20e4d';
 const defaultCity = 'Краснодар';
 const userInput = document.getElementById('user-input');
 const submitBtn = document.getElementById('submit-btn');
 const displayWeather = document.getElementById('display-weather');
 
-// const searchWeather = async (city) => {
+const displayWeatherData = (data) => {
+    const weatherDescription = data.weather[0].description;
+    const weatherDescriptionUpper = weatherDescription.toUpperCase();
 
-//     const res = await fetch(`https://api.weatherstack.com/current?access_key=${API_KEY}&query=${userInput.value}`);
-//     const data = await res.json();
-
-//     if (data.error) {
-//         displayWeather.innerHTML = `
-//             <h3>Город не найден. Попробуйте снова.</h3>
-//         `;
-//         return;
-//     }
-
-//     try {
-//         const res = await fetch(`https://api.weatherstack.com/current?access_key=${API_KEY}&query=${city}`);
-//         const data = await res.json();
-
-//         if (data.code === "404") {
-//             displayWeather.innerHTML = `
-//                 <h3>Город не найден. Попробуйте снова.</h3>
-//             `;
-//         }
-//         const weatherDescription = data.current.weather_descriptions[0];
-//         const weatherDescriptionUpper = weatherDescription.toUpperCase();
-        
-//         displayWeather.innerHTML = `
-//             <h2>${data.location.name}</h2>
-//             <span class="d-flex justify-content-center">
-//                 <img src="${data.current.weather_icons[0]}" alt="weather icon">
-//                 <h3>${Math.round(data.current.temperature)}°C</h3>
-//             </span>
-            
-//             <h4>${weatherDescriptionUpper}</h4>
-//         `;
-
-//     }
-//     catch(error) {
-//         displayWeather.innerHTML = `
-//             <h3>Ошибка при получении данных. Проверьте интернет-соединение или позже попробуйте снова.</h3>
-//         `;
-//         console.error(error);
-//     }
-// };
+    displayWeather.innerHTML = `
+        <h2>${data.name}</h2>
+        <h3>${Math.round(data.main.temp)}°C</h3>
+        <h4>${weatherDescriptionUpper}</h4>
+    `;
+};
 
 
-const searchWeather = async (city = defaultCity, lat = null, lon = null) => {
-    let query = `q=${city}`;
+// Функция для поиска погоды
 
-    if (lat && lon) {
-        query = `lat=${lat}&lon=${lon}`;
-    }
-    console.log(lat);
-    console.log(lon);
+const searchWeather = async (city) => {
 
-    const res = await fetch(`https://api.weatherstack.com/current?access_key=${API_KEY}&query=${query}`);
+    const res = await fetch(`${URL}weather?q=${city}&appid=${API_KEY}&units=metric&lang=ru`);
     const data = await res.json();
 
-    console.log(data);
-
-    if (data.error) {
-        displayWeather.innerHTML = `
-            <h3>Город не найден. Попробуйте снова.</h3>
-        `;
-        return;
-    } else {
-        const weatherDescription = data.current.weather_descriptions[0];
-        const weatherDescriptionUpper = weatherDescription.toUpperCase();
-        
-        displayWeather.innerHTML = `
-            <h2>${data.location.name}</h2>
-            <span class="d-flex justify-content-center">
-                <img src="${data.current.weather_icons[0]}" alt="weather icon">
-                <h3>${Math.round(data.current.temperature)}°C</h3>
-            </span>
-            
-            <h4>${weatherDescriptionUpper}</h4>
-        `;
+    if (res.status === 404) {
+        displayWeather.innerHTML = `<h3>Такой город не найден. Попробуйте ещё раз.</h3>`;
+        console.error(`Ошибка: ${data.message}`);
     }
-
+    if (res.ok) {
+        displayWeatherData(data);
+    } else {
+        displayWeather.innerHTML = `<h3>Ошибка сервера. Попробуйте позже снова.</h3>`;
+        console.error(`Ошибка: ${data.message}`);
+    }
 };
+
+// Функция для получения погоды по геолокации
+// https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API key}
 
 const getWeatherByGeolocation = () => {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(async (position) => {
             const { latitude, longitude } = position.coords;
-            searchWeather(null, latitude, longitude)
-            
-        }, 
-        () => {
+            const locationUrl = `${URL}weather?lat=${latitude}&lon=${longitude}&appid=${API_KEY}&units=metric&lang=ru`;
+
+            try {
+                const res = await fetch(locationUrl);
+                const data = await res.json();
+
+                if (data.error) {
+                    displayWeather.innerHTML = `<h3>Город по геолокации не найден. Используется город по умолчанию.</h3>`;
+                    searchWeather(defaultCity);
+                } else {
+                    displayWeatherData(data); // Отображаем данные о погоде по геолокации
+                }
+            } catch (error) {
+                displayWeather.innerHTML = `<h3>Ошибка при получении геолокации. Используется город по умолчанию.</h3>`;
+                searchWeather(defaultCity);
+            }
+        }, () => {
+            displayWeather.innerHTML = `<h3>Геолокация недоступна. Используется город по умолчанию.</h3>`;
             searchWeather(defaultCity);
-        }
-        
-    );
+        });
     } else {
-        searchWeather(defaultCity)
+        displayWeather.innerHTML = `<h3>Ваш браузер не поддерживает геолокацию. Используется город по умолчанию.</h3>`;
+        searchWeather(defaultCity);
     }
 };
 
+// Отображаем погоду для города по умолчанию или по геолокации при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
     const savedCity = localStorage.getItem('city');
+    
     if (savedCity) {
         searchWeather(savedCity);
     } else {
-        getWeatherByGeolocation();
+        getWeatherByGeolocation(); // Используем геолокацию, если город не сохранен
     }
 });
 
+// Обработчик кнопки для ввода города
 submitBtn.addEventListener('click', () => {
     const city = userInput.value.trim();
 
     if (city) {
-        searchWeather(city);
-        localStorage.setItem('city', city);
+        searchWeather(city); // Запрашиваем погоду для введенного города
+        localStorage.setItem('city', city); // Сохраняем город в localStorage
     } else {
-        displayWeather.innerHTML = `
-            <h3>Пожалуйста, введите название города.</h3>
-        `;
+        displayWeather.innerHTML = `<h3>Пожалуйста, введите название города.</h3>`;
     }
-
-    userInput = '';
 });
 
+// Обработчик ввода через клавишу Enter
 userInput.addEventListener('keydown', (e) => {
     if (e.key === "Enter") {
         const city = userInput.value.trim();
 
         if (city) {
-            searchWeather(city);
-            localStorage.setItem('city', city);
+            searchWeather(city); // Запрашиваем погоду для введенного города
+            localStorage.setItem('city', city); // Сохраняем город в localStorage
         } else {
-            displayWeather.innerHTML = `
-                <h3>Пожалуйста, введите название города.</h3>
-            `;
+            displayWeather.innerHTML = `<h3>Пожалуйста, введите название города.</h3>`;
         }
     }
-    userInput = '';
 });
-
 
 
 // Для смены фоновых изображений
@@ -183,7 +149,6 @@ function updateBackground() {
 }
 
 updateBackground();
-
 
 
 // Для блока задач
